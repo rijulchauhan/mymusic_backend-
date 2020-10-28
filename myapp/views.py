@@ -1,68 +1,125 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.core import serializers
 from .models import Song, Artist, Album, SongArtistRelation, SongAlbumRelation, AlbumArtistRelation
 import json
 
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from myapp.serializers import SongSerializer, ArtistSerializer, AlbumSerializer
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
 # Create your views here.
+@api_view(['GET'])
 def get_songs(request):
-    
-    response = serializers.serialize('json', Song.objects.all()[:20])
-    return HttpResponse(response, content_type='text/json')
+    try:
+        songs = Song.objects.all()
+    except Song.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = SongSerializer(songs, many=True)
+    return Response(serializer.data)
 
 
-
+@api_view(['GET'])
 def get_song_with_id(request, id):
-    data = Song.objects.get(pk=id)
-    SARR=SongArtistRelation.objects.filter(song_id=data.pk)
-    artists = makeARString(SARR)
-    SALR=SongAlbumRelation.objects.filter(song_id=data.pk)
-    album= makeALString(SALR)
-        
-    response = json.dumps({"pk": data.pk, "title": data.title, "img_url": data.img_url, "url": data.url,"artists":artists, "album": album})
-    return HttpResponse(response, content_type="text/json")
+    try:
+        song = Song.objects.get(pk=id)
+    except Song.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
-def get_artists(request):
+    serializer = SongSerializer(song)
     
-    response = serializers.serialize('json', Artist.objects.all()[:20])
-    return HttpResponse(response, content_type='text/json')
+    SARR=SongArtistRelation.objects.filter(song_id=song.id)
+    artists = makeARString(SARR)
+    SALR=SongAlbumRelation.objects.filter(song_id=song.id)
+    album= makeALString(SALR)
+    response_data = {"artists":artists, "album": album}
+    response_data.update(serializer.data)
+    # response = json.dumps(response_data)
+    return Response(response_data)
 
 
+@api_view(['GET'])
+def get_artists(request):
+    try:
+        artists = Artist.objects.all()
+    except Artist.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ArtistSerializer(artists, many=True )
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
 def get_artist_with_id(request, id):
-    data = Artist.objects.get(pk=id)
-    SARR=SongArtistRelation.objects.filter(artist_id=data.pk)
+
+    try:
+        artist = Artist.objects.get(pk=id)
+    except Artist.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = ArtistSerializer(artist)
+    SARR=SongArtistRelation.objects.filter(artist_id=artist.pk)
     songs = []
     for i in SARR:
         song= { "title": i.song_id.title, "id": i.song_id.id }
         songs.append(song)
-        
-    print(songs)
-    response = json.dumps({"pk": data.pk, "name": data.name,"dsc": data.description, "img_url": data.img_url,"songs": songs})
-    return HttpResponse(response, content_type="text/json")
+    response_data = {"songs":songs}
+    response_data.update(serializer.data)
+    # response = json.dumps(response_data)
+    return Response(response_data)
 
-
+@api_view(['GET'])
 def get_albums(request):
     
-    response = serializers.serialize('json', Album.objects.all()[:20])
-    return HttpResponse(response, content_type='text/json')
+    try:
+        albums = Album.objects.all()
+    except Album.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
+    serializer = AlbumSerializer(albums, many=True )
+    return Response(serializer.data)
+
+# def get_album_with_id(request, id):
+#     data = Album.objects.get(pk=id)
+#     SARR=SongAlbumRelation.objects.filter(album_id=data.pk)
+#     songs = []
+#     for i in SARR:
+#         song= { "title": i.song_id.title, "id": i.song_id.id }
+#         songs.append(song)
+        
+#     response = json.dumps({"pk": data.pk, "name": data.name, "dsc": data.description ,"img_url": data.img_url,"songs": songs})
+#     return HttpResponse(response, content_type="text/json")
+
+@api_view(['GET'])
 def get_album_with_id(request, id):
-    data = Album.objects.get(pk=id)
-    SARR=SongAlbumRelation.objects.filter(album_id=data.pk)
+
+    try:
+        album = Album.objects.get(pk=id)
+    except Album.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    serializer = AlbumSerializer(album)
+    SARR=SongAlbumRelation.objects.filter(album_id=album.pk)
     songs = []
     for i in SARR:
         song= { "title": i.song_id.title, "id": i.song_id.id }
         songs.append(song)
-        
-    response = json.dumps({"pk": data.pk, "name": data.name, "dsc": data.description ,"img_url": data.img_url,"songs": songs})
-    return HttpResponse(response, content_type="text/json")
+    response_data = {"songs":songs}
+    response_data.update(serializer.data)
+    # response = json.dumps(response_data)
+    return Response(response_data)
 
-
-
-
-
-
-## Utility Functions
+class AddSongView(APIView):
+    http_method_names = ['post']
+    permission_classes=[IsAuthenticated] 
+    def post(self, request):
+        data = [{'name': 'Ashutosh'}]
+        return JsonResponse(data, safe=False)
 
 
 def makeARString(rel):
