@@ -1,6 +1,5 @@
 venv/
 node_modules/
 .env
-.vscode
+.vscode/
 open_vscode.bat
-mydatabase
